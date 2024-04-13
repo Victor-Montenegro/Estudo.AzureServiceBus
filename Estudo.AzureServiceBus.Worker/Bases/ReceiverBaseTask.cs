@@ -10,9 +10,9 @@ namespace Estudo.AzureServiceBus.Worker.Bases
         private readonly string _taskName;
         private readonly string _queueName;
         private readonly IReceiverPoolFactory _receiverPoolFactory;
-        private readonly ILogger<ReceiverBaseTask<TMessage>> _logger;
+        protected readonly ILogger<ReceiverBaseTask<TMessage>> _logger;
 
-        protected ReceiverBaseTask(IReceiverPoolFactory receiverPoolFactory, string queueName, string taskName, ILogger<ReceiverBaseTask<TMessage>> logger)
+        protected ReceiverBaseTask(string queueName, string taskName, IReceiverPoolFactory receiverPoolFactory, ILogger<ReceiverBaseTask<TMessage>> logger)
         {
             _logger = logger;
             _taskName = taskName;
@@ -38,24 +38,46 @@ namespace Estudo.AzureServiceBus.Worker.Bases
             }
         }
 
-        private async Task HandlerError(ProcessErrorEventArgs args)
+        private Task HandlerError(ProcessErrorEventArgs args)
         {
             _logger.LogError(args.Exception, "HandlerError");
+
+            return Task.CompletedTask;
         }
 
         private async Task HandlerMessage(ProcessMessageEventArgs args)
         {
-            var time = new Stopwatch();
+            try
+            {
+                var time = new Stopwatch();
 
-            time.Start();
-            var message = DeserializeMessage(args.Message);
+                time.Start();
+                var message = DeserializeMessage(args.Message);
 
-            await Run(args, message);
+                await Run(args, message);
 
+                await CompleteMessage(args);
+
+                time.Stop();
+
+                _logger.LogWarning($"Execution task {_taskName} finished in {time.Elapsed}");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex.Message, $"Error in task {_taskName}");
+
+                await AbandonMessage(args);
+            }
+        }
+
+        private async Task AbandonMessage(ProcessMessageEventArgs args)
+        {
+            await args.AbandonMessageAsync(args.Message);
+        }
+
+        private async Task CompleteMessage(ProcessMessageEventArgs args)
+        {
             await args.CompleteMessageAsync(args.Message);
-            time.Stop();
-
-            _logger.LogWarning($"Execution task {_taskName} finished in {time.Elapsed}");
         }
 
         private TMessage DeserializeMessage(ServiceBusReceivedMessage message)

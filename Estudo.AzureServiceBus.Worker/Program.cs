@@ -1,10 +1,16 @@
-using Estudo.AzureServiceBus.Worker;
+using Estudo.AzureServiceBus.Worker.Tasks;
 
 IHost host = Host.CreateDefaultBuilder(args)
-    .ConfigureServices(services =>
+    .ConfigureServices((buider, services) =>
     {
-        services.AddHostedService<Worker>();
+        Infrastructure(buider.Configuration,services);
+        services.AddHostedService<PaymentWebhookNotificationTask>();
     })
     .Build();
+
+void Infrastructure(IConfiguration configuration, IServiceCollection services)
+{
+
+}
 
 host.Run();
