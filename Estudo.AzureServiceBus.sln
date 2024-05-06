@@ -5,7 +5,7 @@ VisualStudioVersion = 17.9.34723.18
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Estudo.AzureServiceBus.Worker", "Estudo.AzureServiceBus.Worker\Estudo.AzureServiceBus.Worker.csproj", "{4CF5CA86-1009-40D4-B1F0-0CB3D68C3697}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Estudo.AzureServiceBus.Domain", "Estudo.AzureServiceBus.Domain\Estudo.AzureServiceBus.Domain.csproj", "{E4B924D9-0543-4910-A98F-6DC95CB96E96}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Estudo.AzureServiceBus.Domain", "Estudo.AzureServiceBus.Domain\Estudo.AzureServiceBus.Domain.csproj", "{E4B924D9-0543-4910-A98F-6DC95CB96E96}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

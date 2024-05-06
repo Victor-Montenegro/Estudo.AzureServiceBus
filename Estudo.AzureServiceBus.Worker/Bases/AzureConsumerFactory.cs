@@ -1,23 +1,25 @@
 ﻿using Azure.Messaging.ServiceBus;
+using Estudo.AzureServiceBus.Worker.Bases.Interfaces;
 
 namespace Estudo.AzureServiceBus.Worker.Bases
 {
-    public class ReceiverPoolFactory : IReceiverPoolFactory
+    public class AzureConsumerFactory : IConsumerPoolFactory
     {
         private readonly ServiceBusClient serviceBusClient;
 
-        public ReceiverPoolFactory(ServiceBusClient serviceBusClient)
+        public AzureConsumerFactory(ServiceBusClient serviceBusClient)
         {
             this.serviceBusClient = serviceBusClient;
         }
 
-        public Task<ServiceBusProcessor> CreateProcessor(string queueName)
+        public Task<ServiceBusProcessor> CreateConsumer(string queueName)
         {
             var options = new ServiceBusProcessorOptions()
             {
-                PrefetchCount = 1,
+                PrefetchCount = 0,
                 MaxConcurrentCalls = 1,
                 AutoCompleteMessages = false,
+                ReceiveMode = ServiceBusReceiveMode.PeekLock,
                 MaxAutoLockRenewalDuration = Timeout.InfiniteTimeSpan
             };
 
@@ -25,10 +27,5 @@ namespace Estudo.AzureServiceBus.Worker.Bases
 
             return Task.FromResult(processor);
         }
-    }
-
-    public interface IReceiverPoolFactory
-    {
-        Task<ServiceBusProcessor> CreateProcessor(string queueName);
     }
 }

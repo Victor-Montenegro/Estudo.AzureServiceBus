@@ -1,23 +1,25 @@
-﻿
-using Azure.Messaging.ServiceBus;
+﻿using Azure.Messaging.ServiceBus;
+using Estudo.AzureServiceBus.Worker.Bases.Interfaces;
 using Newtonsoft.Json;
 using System.Diagnostics;
-
 namespace Estudo.AzureServiceBus.Worker.Bases
 {
-    public abstract class ReceiverBaseTask<TMessage> : BackgroundService
+    public abstract class ConsumerBaseTask<TMessage> : BackgroundService
     {
         private readonly string _taskName;
         private readonly string _queueName;
-        private readonly IReceiverPoolFactory _receiverPoolFactory;
-        protected readonly ILogger<ReceiverBaseTask<TMessage>> _logger;
+        private readonly bool _reProcessMessages;
 
-        protected ReceiverBaseTask(string queueName, string taskName, IReceiverPoolFactory receiverPoolFactory, ILogger<ReceiverBaseTask<TMessage>> logger)
+        private readonly IConsumerPoolFactory _receiverPoolFactory;
+        protected readonly ILogger<ConsumerBaseTask<TMessage>> _logger;
+
+        protected ConsumerBaseTask(bool reProcessMessages, string queueName, string taskName, IConsumerPoolFactory receiverPoolFactory, ILogger<ConsumerBaseTask<TMessage>> logger)
         {
             _logger = logger;
             _taskName = taskName;
             _queueName = queueName;
             _receiverPoolFactory = receiverPoolFactory;
+            _reProcessMessages = reProcessMessages;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -25,12 +27,12 @@ namespace Estudo.AzureServiceBus.Worker.Bases
             _logger.LogWarning($"Starting task {_taskName} in queue {_queueName}");
             try
             {
-                var processor = await _receiverPoolFactory.CreateProcessor(_queueName);
+                var consumer = await _receiverPoolFactory.CreateConsumer(_queueName);
 
-                processor.ProcessMessageAsync += HandlerMessage;
-                processor.ProcessErrorAsync += HandlerError;
+                consumer.ProcessMessageAsync += HandlerMessage;
+                consumer.ProcessErrorAsync += HandlerError;
 
-                await processor.StartProcessingAsync();
+                await consumer.StartProcessingAsync();
             }
             catch (Exception ex)
             {
@@ -60,11 +62,11 @@ namespace Estudo.AzureServiceBus.Worker.Bases
 
                 time.Stop();
 
-                _logger.LogWarning($"Execution task {_taskName} finished in {time.Elapsed}");
+                _logger.LogWarning($"Execution task {_taskName} finished in {time.Elapsed}. Message : {args.Message.Body}");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex.Message, $"Error in task {_taskName}");
+                _logger.LogError(ex, $"Error in task {_taskName}. Message : {args.Message.Body}");
 
                 await AbandonMessage(args);
             }
@@ -72,7 +74,18 @@ namespace Estudo.AzureServiceBus.Worker.Bases
 
         private async Task AbandonMessage(ProcessMessageEventArgs args)
         {
-            await args.AbandonMessageAsync(args.Message);
+            try
+            {
+                if (_reProcessMessages)
+                    await args.DeadLetterMessageAsync(args.Message);
+                else
+                    await args.DeferMessageAsync(args.Message);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Erro in AbondonMessage");
+                throw;
+            }
         }
 
         private async Task CompleteMessage(ProcessMessageEventArgs args)
